@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gateway Hangman — SWAY</title>
+<style>
+:root{--cream:#f4f1e8;--card:#fff;--gold:#d7aa42;--blue:#173b57;--red:#b23a3a;--green:#2f7d4a;--muted:#6c7a84}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--cream);font-family:Arial,Helvetica,sans-serif;color:var(--blue);padding:24px}
+.card{width:min(900px,96vw);background:var(--card);border:4px solid var(--gold);border-radius:24px;box-shadow:0 12px 30px rgba(0,0,0,.10);padding:28px}
+.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-weight:700;font-size:.78rem;color:#b98c27;text-align:center}
+h1{margin:8px 0 4px;text-align:center;font-size:clamp(2rem,4vw,3.2rem)}
+.subtitle{text-align:center;color:var(--muted);font-size:1.05rem;margin-bottom:22px}
+.game{display:grid;grid-template-columns:260px 1fr;gap:28px;align-items:center}
+.hangman-box{display:flex;justify-content:center;align-items:center}
+svg{width:230px;max-width:100%;height:auto}
+.gallows{stroke:var(--blue);stroke-width:5;stroke-linecap:round}
+.person{stroke:var(--red);stroke-width:5;stroke-linecap:round;fill:none;visibility:hidden}
+.phrase{display:flex;justify-content:center;gap:7px;margin:16px 0 24px;min-height:62px}
+.letter-slot{width:38px;height:50px;border-bottom:4px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:1.9rem;font-weight:700}
+.letters{display:grid;grid-template-columns:repeat(9,1fr);gap:8px;margin:18px 0}
+.letter-btn{border:2px solid var(--gold);background:#fffaf0;color:var(--blue);border-radius:10px;padding:10px 0;font-size:1rem;font-weight:700;cursor:pointer}
+.letter-btn:disabled{cursor:default;opacity:.45}
+.letter-btn.correct{background:#e4f2e8;border-color:var(--green);color:var(--green);opacity:1}
+.letter-btn.wrong{background:#f8e3e3;border-color:var(--red);color:var(--red);opacity:1}
+.status-row{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:.95rem;color:var(--muted)}
+.message{min-height:34px;text-align:center;font-size:1.15rem;font-weight:700;margin-top:12px}
+.success{color:var(--green)} .failure{color:var(--red)}
+.controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.control-btn{border:none;border-radius:10px;padding:11px 16px;font-size:.98rem;font-weight:700;cursor:pointer}
+.clue-btn{background:var(--gold);color:#172d3d}.reset-btn{background:var(--blue);color:#fff}
+.clue{display:none;margin:16px auto 0;max-width:660px;background:#fff8e3;border-left:5px solid var(--gold);border-radius:8px;padding:12px 14px;color:#43545f;font-size:1rem}
+.meaning{display:none;margin:14px auto 0;max-width:680px;text-align:center;color:#455963}
+.meaning strong{color:var(--blue)}
+.metaphor{display:block;margin-top:7px;font-style:italic;color:#6a777d}
+@media(max-width:760px){.game{grid-template-columns:1fr}.hangman-box{order:2}.play{order:1}.letters{grid-template-columns:repeat(7,1fr)}}
+@media(max-width:500px){.card{padding:20px 14px}.letters{grid-template-columns:repeat(6,1fr)}.letter-slot{width:34px;font-size:1.7rem}}
+</style>
+</head>
+<body>
+<main class="card">
+<div class="eyebrow">Gateway · Flashcard Challenge</div>
+<h1>Gateway Hangman</h1>
+<div class="subtitle">Find the hidden word.</div>
+<section class="game">
+<div class="hangman-box">
+<svg viewBox="0 0 260 280" aria-label="Hangman">
+<line class="gallows" x1="30" y1="255" x2="205" y2="255"/>
+<line class="gallows" x1="70" y1="255" x2="70" y2="30"/>
+<line class="gallows" x1="70" y1="30" x2="180" y2="30"/>
+<line class="gallows" x1="180" y1="30" x2="180" y2="65"/>
+<circle id="p1" class="person" cx="180" cy="88" r="23"/>
+<line id="p2" class="person" x1="180" y1="111" x2="180" y2="175"/>
+<line id="p3" class="person" x1="180" y1="130" x2="145" y2="150"/>
+<line id="p4" class="person" x1="180" y1="130" x2="215" y2="150"/>
+<line id="p5" class="person" x1="180" y1="175" x2="150" y2="220"/>
+<line id="p6" class="person" x1="180" y1="175" x2="210" y2="220"/>
+</svg>
+</div>
+<div class="play">
+<div id="phrase" class="phrase"></div>
+<div id="letters" class="letters"></div>
+<div class="status-row">
+<div>Mistakes: <strong><span id="mistakes">0</span>/6</strong></div>
+<div>Wrong guesses: <strong id="wrongGuesses">—</strong></div>
+</div>
+<div id="message" class="message"></div>
+<div class="controls">
+<button id="clueBtn" class="control-btn clue-btn" type="button">Clue</button>
+<button id="resetBtn" class="control-btn reset-btn" type="button">Play again</button>
+</div>
+<div id="clue" class="clue">This verb can mean <strong>to influence someone so that they change their opinion, position or decision</strong>.</div>
+<div id="meaning" class="meaning">
+<strong>SWAY</strong> = to influence someone so that they change their opinion, position or decision.
+<span class="metaphor">The figurative meaning develops from the physical idea of moving or leaning from one side to another.</span><br>
+Example: “The new evidence swayed several members of the committee.”
+</div>
+</div>
+</section>
+</main>
+
+<script>
+const target="SWAY", maxMistakes=6;
+const gatewayArgs=new URLSearchParams(location.search);
+const gatewayMuseumMode=gatewayArgs.get('room')==='12'&&!!gatewayArgs.get('token')&&window.parent!==window;
+function reportMuseumResult(outcome){
+ if(!gatewayMuseumMode)return;
+ window.parent.postMessage({type:'GATEWAY_CHALLENGE_RESULT',room:12,outcome,token:gatewayArgs.get('token')},'*');
+ document.getElementById('resetBtn').disabled=true;
+ document.getElementById('resetBtn').title='In the museum, a challenge can only be attempted once.';
+}
+
+let guessed=new Set(), mistakes=0, finished=false;
+
+const phraseEl=document.getElementById("phrase");
+const lettersEl=document.getElementById("letters");
+const mistakesEl=document.getElementById("mistakes");
+const wrongGuessesEl=document.getElementById("wrongGuesses");
+const messageEl=document.getElementById("message");
+const clueEl=document.getElementById("clue");
+const meaningEl=document.getElementById("meaning");
+
+function buildPhrase(){
+  phraseEl.innerHTML="";
+  [...target].forEach(ch=>{
+    const slot=document.createElement("div");
+    slot.className="letter-slot";
+    slot.textContent=guessed.has(ch)?ch:"";
+    phraseEl.appendChild(slot);
+  });
+}
+function buildKeyboard(){
+  lettersEl.innerHTML="";
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(letter=>{
+    const btn=document.createElement("button");
+    btn.className="letter-btn";
+    btn.type="button";
+    btn.textContent=letter;
+    btn.dataset.letter=letter;
+    btn.addEventListener("click",()=>guess(letter));
+    lettersEl.appendChild(btn);
+  });
+}
+function updateHangman(){
+  for(let i=1;i<=6;i++) document.getElementById("p"+i).style.visibility=i<=mistakes?"visible":"hidden";
+}
+function updateButtons(){
+  document.querySelectorAll(".letter-btn").forEach(btn=>{
+    const l=btn.dataset.letter;
+    btn.disabled=guessed.has(l)||finished;
+    btn.classList.remove("correct","wrong");
+    if(guessed.has(l)) btn.classList.add(target.includes(l)?"correct":"wrong");
+  });
+}
+function updateWrongGuesses(){
+  const wrong=[...guessed].filter(l=>!target.includes(l));
+  wrongGuessesEl.textContent=wrong.length?wrong.join(", "):"—";
+}
+function solved(){ return [...target].every(ch=>guessed.has(ch)); }
+function revealAll(){ [...target].forEach(ch=>guessed.add(ch)); buildPhrase(); }
+function guess(letter){
+  if(finished||guessed.has(letter)) return;
+  guessed.add(letter);
+  if(!target.includes(letter)) mistakes++;
+  buildPhrase(); updateHangman(); updateButtons(); updateWrongGuesses();
+  mistakesEl.textContent=mistakes;
+  if(solved()){
+    finished=true;
+    messageEl.className="message success";
+    messageEl.textContent="✓ Exactly: SWAY";
+    reportMuseumResult("success");
+    meaningEl.style.display="block";
+    updateButtons();
+  }else if(mistakes>=maxMistakes){
+    finished=true;
+    revealAll();
+    messageEl.className="message failure";
+    messageEl.textContent="Not this time. The word is: SWAY";
+    reportMuseumResult("failure");
+    meaningEl.style.display="block";
+    updateButtons();
+  }
+}
+function resetGame(){
+ if(gatewayMuseumMode&&finished)return;
+  guessed=new Set(); mistakes=0; finished=false;
+  mistakesEl.textContent="0";
+  wrongGuessesEl.textContent="—";
+  messageEl.textContent="";
+  messageEl.className="message";
+  clueEl.style.display="none";
+  meaningEl.style.display="none";
+  updateHangman(); buildPhrase(); buildKeyboard();
+}
+document.getElementById("clueBtn").addEventListener("click",()=>{ clueEl.style.display=clueEl.style.display==="block"?"none":"block"; });
+document.getElementById("resetBtn").addEventListener("click",resetGame);
+document.addEventListener("keydown",e=>{ const key=e.key.toUpperCase(); if(/^[A-Z]$/.test(key)) guess(key); });
+resetGame();
+</script>
+</body>
+</html>
